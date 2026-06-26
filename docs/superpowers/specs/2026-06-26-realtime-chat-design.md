@@ -16,7 +16,7 @@ presence, typing indicators, read receipts, and unread counts.
 Two existing, separate repos:
 
 - **Backend** — `/home/huyendt/projects/chat-app`
-  NestJS 11. Provides REST endpoints + a Socket.IO gateway. Prisma ORM over
+  NestJS 11. Provides REST endpoints + a Socket.IO gateway. TypeORM over
   Postgres (run via `docker-compose`). Default port `3000`.
 - **Frontend** — `/home/huyendt/projects/chat-app-react`
   React Router v8 (React 19, Tailwind v4, SSR on). Login screen + chat UI.
@@ -42,7 +42,7 @@ Two existing, separate repos:
 │  React Router v8, :5173  │◄───────►│  REST: /auth /users /messages │
 │  socket.io-client        │   WS    │        /conversations         │
 │  Tailwind v4             │◄───────►│  Socket.IO Gateway            │
-└─────────────────────────┘         │  Prisma ──► Postgres (Docker)  │
+└─────────────────────────┘         │  TypeORM ──► Postgres (Docker) │
                                      └──────────────────────────────┘
 ```
 
@@ -54,30 +54,35 @@ Two existing, separate repos:
   app (or reconnects), the frontend fetches conversations + unread counts +
   recent history via REST. (This is how Messenger/Zalo behave in practice.)
 
-## Data Model (Prisma / Postgres)
+## Data Model (TypeORM / Postgres)
 
-```prisma
-model User {
-  id         String   @id @default(uuid())
-  username   String   @unique
-  createdAt  DateTime @default(now())
-  lastSeenAt DateTime @default(now())
-  sent       Message[] @relation("sent")
-  received   Message[] @relation("received")
+```ts
+@Entity('users')
+class User {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ unique: true })       username: string;
+  @CreateDateColumn()             createdAt: Date;
+  @Column({ type: 'timestamptz', default: () => 'now()' }) lastSeenAt: Date;
 }
 
-model Message {
-  id          String    @id @default(uuid())
-  senderId    String
-  recipientId String
-  content     String
-  createdAt   DateTime  @default(now())
-  readAt      DateTime?           // null = unread → drives read receipt + unread count
-  sender      User @relation("sent",     fields: [senderId],    references: [id])
-  recipient   User @relation("received", fields: [recipientId], references: [id])
-  @@index([senderId, recipientId, createdAt])
+@Entity('messages')
+@Index(['senderId', 'recipientId', 'createdAt'])
+class Message {
+  @PrimaryGeneratedColumn('uuid')        id: string;
+  @Column()                              senderId: string;
+  @Column()                              recipientId: string;
+  @Column('text')                        content: string;
+  @CreateDateColumn()                    createdAt: Date;
+  @Column({ type: 'timestamptz', nullable: true }) readAt: Date | null; // null = unread
+  @ManyToOne(() => User) @JoinColumn({ name: 'senderId' })    sender: User;
+  @ManyToOne(() => User) @JoinColumn({ name: 'recipientId' }) recipient: User;
 }
 ```
+
+`readAt = null` drives both read receipts and unread counts.
+
+Schema is created via TypeORM migrations (not `synchronize` in production; dev
+may use `synchronize: true` for speed — decided in the plan).
 
 - No `Conversation` table. A conversation = the pair `(me, other)`.
 - Unread count = `count(Message where recipientId = me, senderId = other, readAt IS NULL)`.
