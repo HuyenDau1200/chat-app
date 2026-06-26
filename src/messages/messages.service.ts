@@ -42,7 +42,7 @@ export class MessagesService {
     );
   }
 
-  async listConversations(userId: string) {
+  async listConversations(userId: string): Promise<Array<{ partnerId: string; lastMessage: Message; unreadCount: number }>> {
     const messages = await this.repo.find({
       where: [{ senderId: userId }, { recipientId: userId }],
       order: { createdAt: 'DESC' },

@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOperator, Repository } from 'typeorm';
 import { Message } from './message.entity';
 import { MessagesService } from './messages.service';
 
@@ -38,9 +38,38 @@ describe('MessagesService', () => {
   it('marks unread messages from a partner as read', async () => {
     await service.markRead('me', 'partner');
     expect(repo.update).toHaveBeenCalledWith(
-      { recipientId: 'me', senderId: 'partner', readAt: expect.anything() },
+      { recipientId: 'me', senderId: 'partner', readAt: expect.objectContaining({ _type: 'isNull' }) },
       { readAt: expect.any(Date) },
     );
+  });
+
+  it('history: calls repo.find with both directions, default limit=50, no createdAt cursor', async () => {
+    repo.find.mockResolvedValue([]);
+    await service.history('me', 'you');
+    expect(repo.find).toHaveBeenCalledWith({
+      where: [
+        { senderId: 'me', recipientId: 'you' },
+        { senderId: 'you', recipientId: 'me' },
+      ],
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+    const [[callArg]] = (repo.find as jest.Mock).mock.calls;
+    expect(callArg.where[0]).not.toHaveProperty('createdAt');
+    expect(callArg.where[1]).not.toHaveProperty('createdAt');
+  });
+
+  it('history: caps limit at 100 and adds LessThan createdAt cursor when before is provided', async () => {
+    repo.find.mockResolvedValue([]);
+    await service.history('me', 'you', { before: '2026-01-01T00:00:00Z', limit: 200 });
+    const [[callArg]] = (repo.find as jest.Mock).mock.calls;
+    expect(callArg.take).toBe(100);
+    expect(callArg.where[0]).toHaveProperty('createdAt');
+    expect(callArg.where[1]).toHaveProperty('createdAt');
+    expect(callArg.where[0].createdAt).toBeInstanceOf(FindOperator);
+    expect(callArg.where[1].createdAt).toBeInstanceOf(FindOperator);
+    expect(callArg.where[0]).toMatchObject({ senderId: 'me', recipientId: 'you' });
+    expect(callArg.where[1]).toMatchObject({ senderId: 'you', recipientId: 'me' });
   });
 
   it('groups conversations by partner with unread counts', async () => {
