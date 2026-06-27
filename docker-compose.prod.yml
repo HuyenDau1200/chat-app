@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:?DB_USER not set — launch with --env-file .env.prod}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS not set — launch with --env-file .env.prod}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME not set — launch with --env-file .env.prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # no ports — internal only
+
+  backend:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.prod
+    environment:
+      DB_HOST: db
+    ports:
+      - '3000:3000'
+
+  frontend:
+    build:
+      context: ../chat-app-react
+      args:
+        VITE_API_URL: ${VITE_API_URL:?VITE_API_URL not set — launch with --env-file .env.prod}
+    restart: unless-stopped
+    ports:
+      - '8080:3000'
+
+volumes:
+  pgdata:
