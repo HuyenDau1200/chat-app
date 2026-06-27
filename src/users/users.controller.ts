@@ -1,6 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
+import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { PresenceService } from '../chat/presence.service';
 import { UsersService } from './users.service';
 

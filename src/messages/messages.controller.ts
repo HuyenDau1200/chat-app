@@ -1,9 +1,10 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
+import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { PresenceService } from '../chat/presence.service';
 import { UsersService } from '../users/users.service';
 import { MessagesService } from './messages.service';
+import { Message } from './message.entity';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -30,7 +31,7 @@ export class MessagesController {
   @Get('conversations')
   async conversations(@CurrentUser() me: AuthUser) {
     const convos = await this.messages.listConversations(me.userId);
-    const result = [];
+    const result: { user: { id: string; username: string; online: boolean }; lastMessage: Message; unreadCount: number }[] = [];
     for (const c of convos) {
       const partner = await this.users.findById(c.partnerId);
       if (!partner) continue;
