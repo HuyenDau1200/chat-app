@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:?DB_USER not set — launch with --env-file .env.prod}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS not set — launch with --env-file .env.prod}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME not set — launch with --env-file .env.prod}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -32,7 +32,7 @@ services:
     build:
       context: ../chat-app-react
       args:
-        VITE_API_URL: ${VITE_API_URL}
+        VITE_API_URL: ${VITE_API_URL:?VITE_API_URL not set — launch with --env-file .env.prod}
     restart: unless-stopped
     ports:
       - '8080:3000'
