@@ -25,11 +25,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const token = client.handshake.auth?.token as string | undefined;
       const payload = this.auth.verify(token ?? '');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       client.data.userId = payload.sub;
     } catch {
       client.disconnect(true);
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const userId: string = client.data.userId;
     const becameOnline = this.presence.add(userId, client.id);
     client.emit('presence:init', this.presence.onlineUserIds());
