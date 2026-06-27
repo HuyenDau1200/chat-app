@@ -9,5 +9,5 @@ export const typeOrmConfig = (config: ConfigService): TypeOrmModuleOptions => ({
   password: config.get<string>('DB_PASS'),
   database: config.get<string>('DB_NAME'),
   autoLoadEntities: true,
-  synchronize: true, // dev only — see Global Constraints
+  synchronize: config.get<string>('DB_SYNCHRONIZE') !== 'false', // default true; set DB_SYNCHRONIZE=false to disable
 });
