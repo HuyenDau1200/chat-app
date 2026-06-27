@@ -79,6 +79,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { fromUserId: string },
   ) {
+    if (!body?.fromUserId) return;
     const readerId: string = client.data.userId;
     await this.messages.markRead(readerId, body.fromUserId);
     const senderSockets = this.presence.socketsOf(body.fromUserId);
@@ -92,6 +93,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { toUserId: string; isTyping: boolean },
   ) {
+    if (!body?.toUserId) return;
     const fromUserId: string = client.data.userId;
     const recipientSockets = this.presence.socketsOf(body.toUserId);
     if (recipientSockets.length) {
